@@ -26,6 +26,13 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseMongoDB(
     mongoConnectionString, "newstech"));
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy => policy
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+});
 
 var app = builder.Build();
 
@@ -39,6 +46,7 @@ if (app.Environment.IsDevelopment())
 
 }
 
+app.UseCors();
 
 app.UseAuthorization();
 
