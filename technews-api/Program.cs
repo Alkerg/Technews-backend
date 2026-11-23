@@ -14,18 +14,18 @@ string mongoConnectionString = builder.Configuration.GetConnectionString("MongoC
     : throw new InvalidOperationException(
         "Falta ConnectionStrings:MongoConnection. Defínela con la variable de entorno ConnectionStrings__MongoConnection.");
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 TypeAdapterConfig.GlobalSettings.Scan(typeof(NewsMappingConfig).Assembly);
 builder.Services.AddMapster();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseMongoDB(
     mongoConnectionString, "newstech"));
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.Converters.Add(
-        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-});
 
 var app = builder.Build();
 
