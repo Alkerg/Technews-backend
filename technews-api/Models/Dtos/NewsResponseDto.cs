@@ -2,7 +2,6 @@
 {
     public class NewsResponseDto
     {
-        public required string Id { get; init; }
         public required string Url { get; init; }
         public string? Title { get; init; }
         public string? Subtitle { get; init; }
