@@ -6,6 +6,7 @@ namespace technews_api.Models
     {
         [Key]
         public string Id { get; set; }
+        public string Slug { get; set; } = "";
         public string? Title { get; set; }
         public string Url { get; set; }
         public string? Subtitle { get; set; }

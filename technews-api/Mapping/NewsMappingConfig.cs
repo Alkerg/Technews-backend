@@ -12,7 +12,8 @@ namespace technews_api.Mapping
         public void Register(TypeAdapterConfig config)
         {
             config.NewConfig<NewsIngestDto, News>()
-                .Map(dest => dest.Id, src => src.Id)         
+                .Map(dest => dest.Id, src => src.Id)
+                .Map(dest => dest.Slug, src => src.Id.Length > 20 ? src.Id.Substring(0, 20) : src.Id)
                 .Ignore(dest => dest.CreatedAt)   
                 .Ignore(dest => dest.UpdatedAt)
                 .Map(dest => dest.PublishedAt,

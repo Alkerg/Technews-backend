@@ -119,5 +119,17 @@ namespace technews_api.Controllers
 
         }
 
+        [HttpGet("{slug}")]
+        [ProducesResponseType<NewsResponseDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetNewsBySlug(string slug, CancellationToken ct)
+        {
+            var news = await _db.News
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Slug == slug, ct);
+
+            return news is null ? NotFound() : Ok(_mapper.Map<NewsResponseDto>(news));
+        }
+
     }
 }

@@ -16,12 +16,12 @@ namespace technews_api.Data
                 e.HasKey(n => n.Id);
                 e.Property(n => n.Id).ValueGeneratedNever();
 
-                //e.Property(n => n.Status).HasConversion<string>();
                 e.Property(n => n.ContentFormat).HasConversion<string>();
                 e.OwnsOne(n => n.MainImage);
 
                 e.HasIndex(n => n.PublishedAt);
                 e.HasIndex(n => n.Url);
+                e.HasIndex(n => n.Slug).IsUnique();
             });
 }
 
