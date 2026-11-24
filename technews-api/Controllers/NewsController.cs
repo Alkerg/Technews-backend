@@ -159,6 +159,27 @@ namespace technews_api.Controllers
             return Ok(newsDto);
         }
 
+        [HttpGet("byCategory")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetNewsByCategory([FromQuery] string? category, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(category))
+                return BadRequest("No se ha indicado ninguna categoría.");
+
+            var normalized = category.Trim().ToLower();
+            var query = _db.News.AsNoTracking().Where(n => n.Category!.ToLower() == normalized);
+
+            var news = await query
+                .OrderByDescending(n => n.PublishedAt)
+                .ToListAsync(ct);
+
+            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
+
+            return Ok(newsDto);
+        }
+
+
         [HttpGet("{slug}")]
         [ProducesResponseType<NewsResponseDto>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
