@@ -1,5 +1,6 @@
 ﻿using MapsterMapper;
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using technews_api.Data;
 using technews_api.Models;
@@ -100,13 +101,13 @@ namespace technews_api.Controllers
 
             if (from is not null)
             {
-                var start = from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-                query = query.Where(n => n.ExtractedAt >= start);
+                var start = from.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                query = query.Where(n => string.Compare(n.ExtractedAt, start) >= 0);
             }
             if (to is not null)
             {
-                var endExclusive = to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-                query = query.Where(n => n.ExtractedAt < endExclusive);
+                var endExclusive = to.Value.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                query = query.Where(n => string.Compare(n.ExtractedAt, endExclusive) < 0);
             }
 
             var news = await query

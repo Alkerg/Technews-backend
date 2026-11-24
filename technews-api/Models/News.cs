@@ -20,7 +20,7 @@ namespace technews_api.Models
         //public ExtractionStatus Status { get; set; } 
         //public string? Error { get; set; }
 
-        public DateTime ExtractedAt { get; set; }
+        public string ExtractedAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
