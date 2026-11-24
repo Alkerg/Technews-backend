@@ -65,20 +65,6 @@ namespace technews_api.Controllers
         }
 
 
-        [HttpGet]
-        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetNews(CancellationToken ct)
-        {
-            var news = await _db.News
-                .AsNoTracking()                         
-                .OrderByDescending(n => n.PublishedAt)  
-                .ToListAsync(ct);
-
-            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
-            
-            return Ok(newsDto);
-        }
-
         [HttpGet("byExtractionDate")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
@@ -167,8 +153,8 @@ namespace technews_api.Controllers
             if (string.IsNullOrWhiteSpace(category))
                 return BadRequest("No se ha indicado ninguna categoría.");
 
-            var normalized = category.Trim().ToLower();
-            var query = _db.News.AsNoTracking().Where(n => n.Category!.ToLower() == normalized);
+            var normalizedCategory = category.Trim().ToLower();
+            var query = _db.News.AsNoTracking().Where(n => n.Category!.ToLower() == normalizedCategory);
 
             var news = await query
                 .OrderByDescending(n => n.PublishedAt)
@@ -179,6 +165,45 @@ namespace technews_api.Controllers
             return Ok(newsDto);
         }
 
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetNewsByMultipleFilters([FromQuery] string? category, [FromQuery] DateOnly? date, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+        {
+            
+            if (date is not null)
+            {
+                if (from is not null || to is not null)
+                    return BadRequest("Usa 'date' o 'from'/'to', no ambos.");
+                from = to = date;
+            }
+
+            if (from > to)
+                return BadRequest("'from' no puede ser posterior a 'to'.");
+
+            var query = _db.News.AsNoTracking();
+
+            if (from is not null)
+            {
+                var start = from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+                query = query.Where(n => n.PublishedAt >= start);
+            }
+            if (to is not null)
+            {
+                var endExclusive = to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+                query = query.Where(n => n.PublishedAt < endExclusive);
+            }
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                var normalizedCategory = category.Trim().ToLower();
+                query = query.Where(n => n.Category!.ToLower() == normalizedCategory);
+            }
+
+            var news = await query.OrderByDescending(n => n.PublishedAt).ToListAsync(ct);
+            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
+            return Ok(newsDto);
+        }
 
         [HttpGet("{slug}")]
         [ProducesResponseType<NewsResponseDto>(StatusCodes.Status200OK)]
