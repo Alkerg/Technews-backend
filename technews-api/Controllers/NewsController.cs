@@ -237,24 +237,7 @@ namespace technews_api.Controllers
                 })
                 .ToListAsync(ct);
 
-            var items = rows.Select(n => new MinimalNewsResponseDto
-            {
-                Slug = n.Slug,
-                Url = n.Url,
-                Title = n.Title,
-                Subtitle = n.Subtitle,
-                Authors = n.Authors,
-                PublishedAt = n.PublishedAt,
-                Category = n.Category,
-                Tags = n.Tags,
-                Summary = n.Summary,
-                MainImage = n.MainImage is null ? null : new NewsImageDto
-                {
-                    Url = n.MainImage.Url,
-                    Alt = n.MainImage.Alt,
-                    Credit = n.MainImage.Credit
-                }
-            }).ToList();
+            var items = _mapper.Map<List<MinimalNewsResponseDto>>(rows);
 
             return Ok(new PagedResponseDto<MinimalNewsResponseDto>
             {
