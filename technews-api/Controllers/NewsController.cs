@@ -233,7 +233,12 @@ namespace technews_api.Controllers
                     n.Category,
                     n.Tags,
                     n.Summary,
-                    n.MainImage
+                    MainImage = n.MainImage == null ? null : new NewsImageDto
+                    {
+                        Url = n.MainImage.Url,
+                        Alt = n.MainImage.Alt,
+                        Credit = n.MainImage.Credit
+                    }
                 })
                 .ToListAsync(ct);
 
