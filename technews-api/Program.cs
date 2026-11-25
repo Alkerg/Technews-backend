@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using technews_api.Authentication;
 using technews_api.Data;
 using technews_api.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
 string mongoConnectionString = builder.Configuration.GetConnectionString("MongoConnection") is { Length: > 0 } cs
     ? cs
@@ -22,7 +22,9 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
+
 TypeAdapterConfig.GlobalSettings.Scan(typeof(NewsMappingConfig).Assembly);
+
 builder.Services.AddMapster();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
@@ -49,16 +51,38 @@ builder.Services.AddOutputCache(options =>
         .SetVaryByQuery("*")
         .Tag("news"));
 });
+
+// Autenticacion por API key para la ingesta de datos mediante n8n
+string ingestApiKey = builder.Configuration["Ingest:ApiKey"] is { Length: >= 32 } key
+    ? key
+    : throw new InvalidOperationException(
+        "Falta Ingest:ApiKey (mín. 32 caracteres). Defínela con la variable de entorno Ingest__ApiKey.");
+
+// Sin esquema por defecto: el handler solo se ejecuta en los endpoints que lo piden
+builder.Services.AddAuthentication()
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName,
+        o => o.ApiKey = ingestApiKey);
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("IngestOnly", policy => policy
+        .AddAuthenticationSchemes(ApiKeyAuthenticationHandler.SchemeName)
+        .RequireAuthenticatedUser());
+});
+
 builder.Services.AddCors(options =>
 {
-    // Politica de CORS
+    // Politica de CORS: solo frontend y solo lectura.
     options.AddDefaultPolicy(policy => policy
-        .AllowAnyOrigin()
-        .AllowAnyMethod()
+        .WithOrigins("https://technewsapp.vercel.app", "http://localhost:4200")
+        .WithMethods("GET")
         .AllowAnyHeader());
 });
 
 var app = builder.Build();
+
+app.UseHttpsRedirection();
 
 // Habilita la compresion del response
 app.UseResponseCompression();
@@ -73,11 +97,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
-app.UseOutputCache();
-
-app.UseHttpsRedirection();
+app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseOutputCache();
 
 app.MapControllers();
 

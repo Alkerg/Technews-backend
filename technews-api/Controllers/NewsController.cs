@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using System.Globalization;
@@ -28,8 +29,10 @@ namespace technews_api.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [Authorize(Policy = "IngestOnly")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> IngestNews([FromBody] List<NewsIngestDto> news, CancellationToken ct)
         {
             if (news is null || news.Count == 0)
@@ -65,7 +68,7 @@ namespace technews_api.Controllers
                 await _outputCache.EvictByTagAsync("news", ct);
             }
 
-            return Ok(new
+            return StatusCode(201,new
             {
                 received = news.Count,
                 inserted = toInsert.Count,
@@ -73,86 +76,6 @@ namespace technews_api.Controllers
             });
         }
 
-
-        [HttpGet("byExtractionDate")]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetNewsByExtractionDate([FromQuery] DateOnly? date, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
-        {
-            if (date is not null)
-            {
-                if (from is not null || to is not null)
-                    return BadRequest("Usa 'date' o 'from'/'to', no ambos.");
-                from = to = date;
-            }
-
-            if (from is null && to is null)
-                return BadRequest("Indica 'date' o al menos uno de 'from'/'to' (formato yyyy-MM-dd).");
-
-            if (from > to)
-                return BadRequest("'from' no puede ser posterior a 'to'.");
-
-            var query = _db.News.AsNoTracking();
-
-            if (from is not null)
-            {
-                var start = from.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-                query = query.Where(n => string.Compare(n.ExtractedAt, start) >= 0);
-            }
-            if (to is not null)
-            {
-                var endExclusive = to.Value.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-                query = query.Where(n => string.Compare(n.ExtractedAt, endExclusive) < 0);
-            }
-
-            var news = await query
-                .OrderByDescending(n => n.ExtractedAt)
-                .ToListAsync(ct);
-
-            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
-            return Ok(newsDto);
-
-        }
-
-        [HttpGet("byPublishedDate")]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetNewsByPublishedDate([FromQuery] DateOnly? date, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
-        {
-            if (date is not null)
-            {
-                if (from is not null || to is not null)
-                    return BadRequest("Usa 'date' o 'from'/'to', no ambos.");
-                from = to = date;
-            }
-
-            if (from is null && to is null)
-                return BadRequest("Indica 'date' o al menos uno de 'from'/'to' (formato yyyy-MM-dd).");
-
-            if (from > to)
-                return BadRequest("'from' no puede ser posterior a 'to'.");
-
-            var query = _db.News.AsNoTracking().Where(n => n.PublishedAt != null);
-
-            if (from is not null)
-            {
-                var start = from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-                query = query.Where(n => n.PublishedAt >= start);
-            }
-            if (to is not null)
-            {
-                var endExclusive = to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-                query = query.Where(n => n.PublishedAt < endExclusive);
-            }
-
-            var news = await query
-                .OrderByDescending(n => n.PublishedAt)
-                .ToListAsync(ct);
-
-            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
-
-            return Ok(newsDto);
-        }
 
         [HttpGet("byCategory")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
