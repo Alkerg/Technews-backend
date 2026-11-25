@@ -12,6 +12,9 @@ namespace technews_api.Controllers
     [Route("api/news")]
     public class NewsController : ControllerBase
     {
+        private const int DefaultPageSize = 9;
+        private const int MaxPageSize = 20;
+
         NewsDbContext _db;
         IMapper _mapper;
         public NewsController(NewsDbContext db, IMapper mapper)
@@ -167,10 +170,22 @@ namespace technews_api.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType<List<NewsResponseDto>>(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetNewsByMultipleFilters([FromQuery] string? category, [FromQuery] DateOnly? date, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+        [ProducesResponseType<PagedResponseDto<NewsResponseDto>>(StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetNewsByMultipleFilters(
+            [FromQuery] string? category,
+            [FromQuery] DateOnly? date,
+            [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to,
+            CancellationToken ct,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = DefaultPageSize)
         {
-            
+            if (page < 1)
+                return BadRequest("'page' debe ser 1 o mayor.");
+
+            if (pageSize < 1 || pageSize > MaxPageSize)
+                return BadRequest($"'pageSize' debe estar entre 1 y {MaxPageSize}.");
+
             if (date is not null)
             {
                 if (from is not null || to is not null)
@@ -200,9 +215,24 @@ namespace technews_api.Controllers
                 query = query.Where(n => n.Category!.ToLower() == normalizedCategory);
             }
 
-            var news = await query.OrderByDescending(n => n.PublishedAt).ToListAsync(ct);
-            var newsDto = _mapper.Map<List<NewsResponseDto>>(news);
-            return Ok(newsDto);
+            var totalItems = await query.LongCountAsync(ct);
+
+            
+            var news = await query
+                .OrderByDescending(n => n.PublishedAt)
+                .ThenBy(n => n.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return Ok(new PagedResponseDto<NewsResponseDto>
+            {
+                Items = _mapper.Map<List<NewsResponseDto>>(news),
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+                TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize)
+            });
         }
 
         [HttpGet("{slug}")]
