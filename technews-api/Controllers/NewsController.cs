@@ -216,18 +216,49 @@ namespace technews_api.Controllers
             }
 
             var totalItems = await query.LongCountAsync(ct);
-
             
-            var news = await query
+            var rows = await query
                 .OrderByDescending(n => n.PublishedAt)
                 .ThenBy(n => n.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(n => new
+                {
+                    n.Slug,
+                    n.Url,
+                    n.Title,
+                    n.Subtitle,
+                    n.Authors,
+                    n.PublishedAt,
+                    n.Category,
+                    n.Tags,
+                    n.Summary,
+                    n.MainImage
+                })
                 .ToListAsync(ct);
+
+            var items = rows.Select(n => new MinimalNewsResponseDto
+            {
+                Slug = n.Slug,
+                Url = n.Url,
+                Title = n.Title,
+                Subtitle = n.Subtitle,
+                Authors = n.Authors,
+                PublishedAt = n.PublishedAt,
+                Category = n.Category,
+                Tags = n.Tags,
+                Summary = n.Summary,
+                MainImage = n.MainImage is null ? null : new NewsImageDto
+                {
+                    Url = n.MainImage.Url,
+                    Alt = n.MainImage.Alt,
+                    Credit = n.MainImage.Credit
+                }
+            }).ToList();
 
             return Ok(new PagedResponseDto<MinimalNewsResponseDto>
             {
-                Items = _mapper.Map<List<MinimalNewsResponseDto>>(news),
+                Items = items,
                 Page = page,
                 PageSize = pageSize,
                 TotalItems = totalItems,
