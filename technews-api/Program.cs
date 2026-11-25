@@ -26,18 +26,32 @@ TypeAdapterConfig.GlobalSettings.Scan(typeof(NewsMappingConfig).Assembly);
 builder.Services.AddMapster();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseMongoDB(
     mongoConnectionString, "newstech"));
+
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
     options.Providers.Add<BrotliCompressionProvider>();
     options.Providers.Add<GzipCompressionProvider>();
 });
+
 builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
 builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+
+builder.Services.AddOutputCache(options =>
+{
+    // Cache para respuestas 200. Una entrada por combinación de query params.
+    // Se invalida desde IngestNews (tag "news") cuando entran noticias nuevas.
+    options.AddPolicy("news", policy => policy
+        .Expire(TimeSpan.FromMinutes(10))
+        .SetVaryByQuery("*")
+        .Tag("news"));
+});
 builder.Services.AddCors(options =>
 {
+    // Politica de CORS
     options.AddDefaultPolicy(policy => policy
         .AllowAnyOrigin()
         .AllowAnyMethod()
@@ -46,6 +60,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Habilita la compresion del response
 app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())
@@ -53,11 +68,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseHttpsRedirection();
 
 }
 
 app.UseCors();
+
+app.UseOutputCache();
+
+app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

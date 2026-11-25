@@ -1,5 +1,6 @@
 ﻿using MapsterMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using technews_api.Data;
@@ -10,6 +11,7 @@ namespace technews_api.Controllers
 {
     [ApiController]
     [Route("api/news")]
+    [OutputCache(PolicyName = "news")]
     public class NewsController : ControllerBase
     {
         private const int DefaultPageSize = 9;
@@ -17,10 +19,12 @@ namespace technews_api.Controllers
 
         NewsDbContext _db;
         IMapper _mapper;
-        public NewsController(NewsDbContext db, IMapper mapper)
+        IOutputCacheStore _outputCache;
+        public NewsController(NewsDbContext db, IMapper mapper, IOutputCacheStore outputCache)
         {
             _db = db;
             _mapper = mapper;
+            _outputCache = outputCache;
         }
 
         [HttpPost]
@@ -57,6 +61,8 @@ namespace technews_api.Controllers
             {
                 _db.News.AddRange(toInsert);
                 await _db.SaveChangesAsync(ct);
+
+                await _outputCache.EvictByTagAsync("news", ct);
             }
 
             return Ok(new
