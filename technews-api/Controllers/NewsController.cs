@@ -170,7 +170,7 @@ namespace technews_api.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType<PagedResponseDto<NewsResponseDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<PagedResponseDto<MinimalNewsResponseDto>>(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetNewsByMultipleFilters(
             [FromQuery] string? category,
             [FromQuery] DateOnly? date,
@@ -225,9 +225,9 @@ namespace technews_api.Controllers
                 .Take(pageSize)
                 .ToListAsync(ct);
 
-            return Ok(new PagedResponseDto<NewsResponseDto>
+            return Ok(new PagedResponseDto<MinimalNewsResponseDto>
             {
-                Items = _mapper.Map<List<NewsResponseDto>>(news),
+                Items = _mapper.Map<List<MinimalNewsResponseDto>>(news),
                 Page = page,
                 PageSize = pageSize,
                 TotalItems = totalItems,
